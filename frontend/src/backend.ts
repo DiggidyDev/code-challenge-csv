@@ -21,12 +21,20 @@ export class CodeChallengeBackendProvider extends BackendProvider {
 
         //TODO: import data from csvPath
         // use an existing library to parse the contents of the CSV file
-        // then map the data to House shape instances
         // try to make this method reusable such a way that it could be reused in other places for other types of CSV's and other types of shapes
         // in order to do this, importData will need to send a mapping between the CSV fields and the shape fields,
-        // and this method uses that mapping to create the shapes and set their properties.
+        // and here in this method you can use that mapping to create a shape instance for each row and then set the shapes' properties.
         // it is up to you how want to make this mapping
-        // Note: you can use new shapeClass() to create a new instance of the shapeClass, which in this example is House
+
+        //Tip 1: convert each row to a new instance of the given shape
+        //csvRows.forEach(csvRow => {
+            //You can use this line to create a new instance of the shape
+            let instance = new (shapeClass as any)();
+
+            //Tip2: go over each column in the CSV row and use the CSV cell value to set a value of the shape based on the mapping
+            //csvRow.forEach(cellValue => {
+                //Use can use something like this, where propertyName would refer to the name of the get-method in the Shape, as defined in the mapping
+                // instance[propertyName] = cellValue;
 
         return result;
     }
