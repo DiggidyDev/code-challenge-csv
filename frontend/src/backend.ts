@@ -1,8 +1,12 @@
-import {BackendProvider} from 'lincd-server-utils/lib/utils/BackendProvider';
-import {ShapeSet} from "lincd/lib/collections/ShapeSet";
-import {House} from "./shapes/House";
-import {Shape} from "lincd/lib/shapes/Shape";
+import { BackendProvider } from "lincd-server-utils/lib/utils/BackendProvider";
+import { ShapeSet } from "lincd/lib/collections/ShapeSet";
+import { House } from "./shapes/House";
+import { Shape, ShapeLike } from "lincd/lib/shapes/Shape";
+import { parse } from "csv-parse/sync";
 import path from "path";
+import { readFile } from "fs/promises";
+import { NamedNode } from "lincd/lib/models";
+import { houses } from "./ontologies/houses";
 
 export class CodeChallengeBackendProvider extends BackendProvider {
     constructor(server) {
@@ -10,31 +14,49 @@ export class CodeChallengeBackendProvider extends BackendProvider {
     }
 
     async importData() {
+        let mapping: Map<string, NamedNode> = new Map();
+        mapping.set("price", houses.price);
+        mapping.set("type", houses.propertyType);
+        mapping.set("title", houses.title);
+        mapping.set("img", houses.image);
+        mapping.set("new", houses.isNew);
 
-        let mapping = null;
-        let importResult = await this.convertCSVToShapes(path.join('data', 'other-houses.csv'), House, mapping);
+        let importResult = await this.convertCSVToShapes(
+            path.join("data", "other-houses.csv"),
+            House,
+            mapping
+        );
         return importResult;
     }
 
-    async convertCSVToShapes(csvPath, shapeClass: typeof Shape, csvFieldsToShapeFieldsMapping): Promise<ShapeSet> {
+    async convertCSVToShapes(
+        csvPath,
+        shapeClass: typeof Shape,
+        csvFieldsToShapeFieldsMapping
+    ): Promise<ShapeSet> {
+        const data = await readFile(csvPath);
+
         let result = new ShapeSet();
 
-        //TODO: import data from csvPath
-        // use an existing library to parse the contents of the CSV file
-        // try to make this method reusable such a way that it could be reused in other places for other types of CSV's and other types of shapes
-        // in order to do this, importData will need to send a mapping between the CSV fields and the shape fields,
-        // and here in this method you can use that mapping to create a shape instance for each row and then set the shapes' properties.
-        // it is up to you how want to make this mapping
+        const records: string[][] = parse(data, { delimiter: "," });
 
-        //Tip 1: convert each row to a new instance of the given shape
-        //csvRows.forEach(csvRow => {
-            //You can use this line to create a new instance of the shape
-            let instance = new (shapeClass as any)();
+        const columns = records.shift();
 
-            //Tip2: go over each column in the CSV row and use the CSV cell value to set a value of the shape based on the mapping
-            //csvRow.forEach(cellValue => {
-                //Use can use something like this, where propertyName would refer to the name of the get-method in the Shape, as defined in the mapping
-                // instance[propertyName] = cellValue;
+        records.forEach((record) => {
+            let shapeInstance = new (shapeClass as any)();
+
+            record.forEach((value, i) => {
+                const pShapes = shapeInstance.nodeShape.getPropertyShapes();
+                const accessor = pShapes.find(
+                    (p) =>
+                        p.path == csvFieldsToShapeFieldsMapping.get(columns[i])
+                );
+
+                shapeInstance[accessor.label] = value;
+            });
+
+            result.add(shapeInstance);
+        });
 
         return result;
     }
